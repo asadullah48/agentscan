@@ -1,0 +1,43 @@
+# Detector catalog for agentscan.
+#
+# Each asset type is matched data-driven, sherlock-style: a fixed catalog of
+# known names/locations is probed against every file in the tree.
+#
+# Matching rules per type (any one rule set must match):
+#   filenames:     exact basename match (case-sensitive)
+#   suffix:        basename suffix match, used together with path_contains
+#   path_contains: substring that must appear in the file's POSIX relative path
+#   validator:     name of the validator in agentscan.validators (optional)
+
+asset_types:
+  - id: skill
+    label: "SKILL.md skill"
+    filenames: ["SKILL.md"]
+    validator: frontmatter
+    required_fields: ["name", "description"]
+
+  - id: mcp_config
+    label: "MCP server config"
+    filenames: [".mcp.json", "mcp.json"]
+    validator: mcp_json
+
+  - id: agent_instructions
+    label: "Agent instructions"
+    filenames: ["CLAUDE.md", "AGENTS.md"]
+
+  - id: plugin_manifest
+    label: "Plugin manifest"
+    filenames: ["plugin.json"]
+    # Only plugin.json inside a .claude-plugin directory — a bare plugin.json
+    # elsewhere is too generic to claim.
+    path_contains: "/.claude-plugin/"
+    validator: plugin_json
+
+  - id: subagent
+    label: "Subagent definition"
+    suffix: ".md"
+    # Leading slash anchors the marker at a path-segment boundary; it is
+    # matched against both the root-relative and the absolute path.
+    path_contains: "/.claude/agents/"
+    validator: frontmatter
+    required_fields: ["name"]
