@@ -5,10 +5,10 @@ Regenerate the doc with ``python -m agentscan.rules`` from the repository root.
 
 from __future__ import annotations
 
-import sys
+import argparse
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .detectors import load_catalog, read_catalog
 
@@ -63,9 +63,15 @@ def render_markdown() -> str:
     return "\n".join(lines) + "\n"
 
 
-if __name__ == "__main__":
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else DOC_PATH
+def main(argv: Optional[List[str]] = None) -> None:
+    parser = argparse.ArgumentParser(prog="python -m agentscan.rules", description="Generate the rule catalog doc.")
+    parser.add_argument("output", nargs="?", type=Path, default=DOC_PATH, help=f"output file (default: {DOC_PATH})")
+    out = parser.parse_args(argv).output
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8", newline="\n") as fh:  # write_text(newline=) is 3.10+
         fh.write(render_markdown())
     print(f"wrote {out}")
+
+
+if __name__ == "__main__":
+    main()

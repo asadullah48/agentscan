@@ -209,3 +209,21 @@ def test_rules_doc_lists_every_rule():
     doc = render_markdown()
     for rule_id in load_rules():
         assert f"`{rule_id}`" in doc
+
+
+def test_rules_generator_help_writes_nothing(tmp_path, monkeypatch, capsys):
+    from agentscan.rules import main as generate
+
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        generate(["--help"])
+    assert exc.value.code == 0 and "usage:" in capsys.readouterr().out
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_rules_generator_writes_given_path(tmp_path):
+    from agentscan.rules import main as generate
+
+    out = tmp_path / "RULES.md"
+    generate([str(out)])
+    assert out.read_text(encoding="utf-8") == render_markdown()
