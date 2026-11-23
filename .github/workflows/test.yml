@@ -4,7 +4,8 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Pinned: setup-python has no Python 3.9 build for ubuntu-latest (26.04); 3.9.25 ships for 22.04/24.04.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
