@@ -147,15 +147,24 @@ The SARIF upload shows findings in the Security tab; drop the upload step and `s
 
 ## Engineering evidence
 
-**VERIFIED · 2026-11-12 · code commit [`a4891c5`](https://github.com/asadullah48/agentscan/tree/a4891c59f15a42c0e269ceeeb7a711f281151d40)**
+**VERIFIED · 2026-11-23 · code commit [`395a847`](https://github.com/asadullah48/agentscan/tree/395a8478d44c5150d71a5a5465200771c980054d)**
 
-The full pytest suite passed locally: **36 passed in 2.11s**. This is a local run, not a GitHub Actions status.
+Fresh local runs on Windows (this README change is committed after the code it describes):
+
+| Python | Result |
+| --- | --- |
+| 3.13.15 | **83 passed, 1 skipped** in 2.37s |
+| 3.9.25 | **83 passed, 1 skipped** in 2.98s |
+
+`ruff check .` reported no issues. The skipped test is the symlink path-safety case: Windows here does not permit symlinks without Developer Mode. That test was run separately on Linux (WSL, Python 3.12.3), where it passed, and it failed when the symlink guard in `fix` was removed. These are local runs; GitHub Actions results are shown by the CI badge.
 
 ```bash
-python -m pytest tests -q
+python -m pip install '.[dev]'
+ruff check .
+python -m pytest tests -q -rs
 ```
 
-Verification covers CLI behavior, discovery, validators, and fixers. It does not establish production adoption, security certification, or complete compatibility with every agent client.
+Verification covers CLI behavior, output formats (JSON and SARIF schemas), exit codes, every catalog rule, discovery, validators, fixers, and fix path safety. It does not establish production adoption, security certification, or complete compatibility with every agent client.
 
 | Decision | Inspect the implementation |
 | --- | --- |
