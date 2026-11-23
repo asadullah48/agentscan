@@ -67,9 +67,14 @@ class Asset:
     rel_path: str  # POSIX, relative to scan root
 
 
+def read_catalog() -> dict:
+    """Return the raw catalog.yaml shipped inside the package."""
+    return yaml.safe_load(files("agentscan").joinpath("catalog.yaml").read_text(encoding="utf-8"))
+
+
 def load_catalog() -> List[AssetType]:
     """Load asset-type definitions from the catalog shipped inside the package."""
-    raw = yaml.safe_load(files("agentscan").joinpath("catalog.yaml").read_text(encoding="utf-8"))
+    raw = read_catalog()
     known = {f.name for f in dataclasses.fields(AssetType)}
     types = []
     for entry in raw["asset_types"]:

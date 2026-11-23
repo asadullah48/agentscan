@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from click.testing import CliRunner
 
 from agentscan.cli import main
@@ -85,3 +86,46 @@ def test_cli_fix_roundtrip(tmp_path):
 
     again = runner.invoke(main, ["fix", str(tmp_path)])
     assert "Nothing to fix." in again.output
+
+
+def _snapshot(root):
+    return {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+
+def test_fix_only_changes_files_inside_target(tmp_path):
+    target = tmp_path / "target"
+    outside = tmp_path / "outside"
+    for root in (target, outside):
+        (root / "skills" / "pdf").mkdir(parents=True)
+        (root / "skills" / "pdf" / "SKILL.md").write_text("# pdf\n", encoding="utf-8")
+        (root / ".claude" / "agents").mkdir(parents=True)
+        (root / ".claude" / "agents" / "rev.md").write_text("---\nmodel: x\n---\n", encoding="utf-8")
+    before = _snapshot(tmp_path)
+
+    result = CliRunner().invoke(main, ["fix", str(target)])
+
+    assert result.exit_code == 0
+    after = _snapshot(tmp_path)
+    assert set(after) == set(before), "fix must not create or delete files"
+    changed = {p for p in before if before[p] != after[p]}
+    assert changed == {target / "skills" / "pdf" / "SKILL.md", target / ".claude" / "agents" / "rev.md"}
+    assert all(target in p.parents for p in changed)
+
+
+def test_fix_never_writes_through_symlink_outside_target(tmp_path):
+    target = tmp_path / "target"
+    (target / "skills" / "evil").mkdir(parents=True)
+    victim = tmp_path / "outside" / "SKILL.md"
+    victim.parent.mkdir()
+    victim.write_text("# outside, no frontmatter\n", encoding="utf-8")
+    link = target / "skills" / "evil" / "SKILL.md"
+    try:
+        link.symlink_to(victim)
+    except OSError:
+        pytest.skip("symlinks not permitted here (Windows without Developer Mode)")
+
+    result = CliRunner().invoke(main, ["fix", str(target)])
+
+    assert result.exit_code == 0
+    assert "[skipped] skills/evil/SKILL.md" in result.output
+    assert victim.read_text(encoding="utf-8") == "# outside, no frontmatter\n"

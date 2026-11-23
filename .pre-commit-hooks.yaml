@@ -1,0 +1,8 @@
+- id: agentscan-validate
+  name: agentscan validate
+  description: Validate agent assets (SKILL.md, MCP configs, subagents, plugin manifests).
+  entry: agentscan validate
+  args: ["."]
+  language: python
+  pass_filenames: false
+  always_run: true

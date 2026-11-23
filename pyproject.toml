@@ -19,7 +19,7 @@ dependencies = [
 agentscan = "agentscan.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "ruff>=0.5", "jsonschema>=4.0"]
 
 [tool.setuptools.packages.find]
 include = ["agentscan*"]
@@ -29,3 +29,14 @@ include = ["agentscan*"]
 # would crash at import of the catalog.
 [tool.setuptools.package-data]
 agentscan = ["catalog.yaml"]
+
+# Pin lint config in the repo so a contributor's user-level ruff config cannot
+# change what CI enforces. Default rule set (E4/E7/E9/F) plus import sorting.
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+# Explicit `select`, not `extend-select`: newer ruff releases widen the default
+# set (e.g. pyupgrade), which would silently change what CI enforces.
+select = ["E4", "E7", "E9", "F", "I"]

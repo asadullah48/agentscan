@@ -1,4 +1,4 @@
-from agentscan.detectors import AssetType, Asset
+from agentscan.detectors import Asset, AssetType
 from agentscan.validators import (
     MAX_DESCRIPTION_LEN,
     validate_asset,

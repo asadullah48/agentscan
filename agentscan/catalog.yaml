@@ -41,3 +41,112 @@ asset_types:
     path_contains: "/.claude/agents/"
     validator: frontmatter
     required_fields: ["name"]
+
+# Rule catalog: every check validators.py can report. Validators look up their
+# severity here, so this list is the single source of truth for severities.
+# docs/RULES.md is generated from it: `python -m agentscan.rules`.
+#   applies_to: "all" or a validator name used by asset_types above
+#   severity:   error (fails `validate`) | warning (fails with --fail-on warning)
+#   fix:        auto = repaired by `agentscan fix`; otherwise manual guidance
+rules:
+  - id: unreadable
+    severity: error
+    applies_to: all
+    check: The file cannot be read as UTF-8 text.
+    fix: Manual. Re-save the file as UTF-8 and check its permissions.
+
+  - id: empty-file
+    severity: warning
+    applies_to: all
+    check: The file is empty or contains only whitespace.
+    fix: Manual. Add content or delete the file.
+
+  - id: unknown-validator
+    severity: error
+    applies_to: all
+    check: The catalog names a validator that agentscan does not implement.
+    fix: Manual. Correct the `validator` key in catalog.yaml.
+
+  - id: frontmatter-missing
+    severity: error
+    applies_to: frontmatter
+    check: The file does not start with a `---` YAML frontmatter block.
+    fix: Auto. `agentscan fix` prepends a skeleton with a derived name and, for skills, a TODO description.
+
+  - id: frontmatter-unterminated
+    severity: error
+    applies_to: frontmatter
+    check: The frontmatter block has no closing `---` line.
+    fix: Manual. Add the closing `---` line.
+
+  - id: frontmatter-invalid-yaml
+    severity: error
+    applies_to: frontmatter
+    check: The frontmatter block is not valid YAML.
+    fix: Manual. Correct the YAML syntax reported in the message.
+
+  - id: frontmatter-not-mapping
+    severity: error
+    applies_to: frontmatter
+    check: The frontmatter parses, but not as a key/value mapping.
+    fix: "Manual. Rewrite the block as `key: value` lines."
+
+  - id: field-missing
+    severity: error
+    applies_to: frontmatter
+    check: A required frontmatter field (`name`, and `description` for skills) is absent.
+    fix: Auto for `name` (derived from the skill directory or subagent filename). Manual for `description`.
+
+  - id: field-invalid
+    severity: error
+    applies_to: frontmatter
+    check: A required frontmatter field is empty or not a string.
+    fix: Manual. Set the field to a non-empty string.
+
+  - id: description-too-long
+    severity: warning
+    applies_to: frontmatter
+    check: The `description` field is longer than 1,024 characters.
+    fix: Manual. Shorten the description.
+
+  - id: mcp-invalid-json
+    severity: error
+    applies_to: mcp_json
+    check: The MCP config is not valid JSON.
+    fix: Manual. Correct the JSON syntax reported in the message.
+
+  - id: mcp-servers-missing
+    severity: error
+    applies_to: mcp_json
+    check: The config has no top-level `mcpServers` object.
+    fix: Manual. Wrap server entries in a top-level `mcpServers` object.
+
+  - id: mcp-servers-empty
+    severity: error
+    applies_to: mcp_json
+    check: "`mcpServers` is not an object or has no entries."
+    fix: Manual. Declare at least one server, or delete the config.
+
+  - id: mcp-server-no-transport
+    severity: warning
+    applies_to: mcp_json
+    check: A server entry declares neither `command` nor `url`.
+    fix: Manual. Add a `command` (stdio) or `url` (HTTP) key to the entry.
+
+  - id: plugin-invalid-json
+    severity: error
+    applies_to: plugin_json
+    check: The plugin manifest is not valid JSON.
+    fix: Manual. Correct the JSON syntax reported in the message.
+
+  - id: plugin-not-object
+    severity: error
+    applies_to: plugin_json
+    check: The plugin manifest is not a JSON object.
+    fix: Manual. Make the top-level value an object.
+
+  - id: plugin-name-invalid
+    severity: error
+    applies_to: plugin_json
+    check: The plugin manifest's `name` is missing, empty, or not a string.
+    fix: Manual. Set `name` to a non-empty string.

@@ -6,6 +6,7 @@
 
 Local tooling for the files behind an agent system.
 
+[![CI](https://github.com/asadullah48/agentscan/actions/workflows/test.yml/badge.svg)](https://github.com/asadullah48/agentscan/actions/workflows/test.yml)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Version](https://img.shields.io/badge/version-0.2.0-0f766e?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-475569?style=flat-square)
@@ -48,7 +49,8 @@ Scan your agent project by replacing `.` with its directory:
 
 ```bash
 agentscan scan /path/to/project --json
-agentscan validate /path/to/project --strict
+agentscan validate /path/to/project --fail-on warning
+agentscan validate /path/to/project --format sarif > agentscan.sarif
 agentscan fix /path/to/project --dry-run
 ```
 
@@ -73,13 +75,24 @@ Replace generated TODO descriptions with real descriptions. A passing structural
 
 Empty assets produce a warning before type-specific validation. Frontmatter descriptions longer than 1,024 characters also produce a warning.
 
+Every check has a rule id, severity, and fix in [`docs/RULES.md`](docs/RULES.md), generated from [`catalog.yaml`](agentscan/catalog.yaml) by `python -m agentscan.rules`. A test fails if the doc is stale.
+
+### Output formats
+
+`scan` and `validate` accept `--format table|json|sarif` (default `table`; `--json` is an alias for `--format json`).
+
+- `json`: one object per asset; `validate` problems carry `rule`, `severity`, and `message`.
+- `sarif`: SARIF 2.1.0 for GitHub code scanning and other SARIF tools. Paths stay relative to the scanned directory. Tests validate the output against the official OASIS schema.
+
 ### Validation exit codes
 
 | Code | Meaning |
 | --- | --- |
-| `0` | No errors; warnings are allowed unless `--strict` is set. Also returned when no assets are found. |
-| `1` | Validation errors, or warnings with `--strict`. |
+| `0` | Nothing at or above `--fail-on` was found. Also returned when no assets are found. |
+| `1` | Errors were found, or warnings with `--fail-on warning`. |
 | `2` | Invalid command usage, such as a nonexistent path. |
+
+`--fail-on` defaults to `error`; `--strict` is an alias for `--fail-on warning`. The exit code is the same for every `--format`.
 
 ### Repair boundary
 
@@ -88,7 +101,49 @@ The fixer supports two changes for frontmatter assets:
 - Prepend missing frontmatter with a derived name and, when required, a TODO description.
 - Insert a missing required `name` into an existing valid frontmatter block.
 
-It leaves broken YAML, unterminated frontmatter, malformed JSON, and existing invalid field values for manual repair. Derived names come from the skill's parent directory or the subagent's filename. Review the diff after applying repairs.
+It never writes to a file whose real location (after resolving symlinks) is outside the target path; such files are reported as `[skipped]`. It leaves broken YAML, unterminated frontmatter, malformed JSON, and existing invalid field values for manual repair. Derived names come from the skill's parent directory or the subagent's filename. Review the diff after applying repairs.
+
+## Use in CI
+
+### pre-commit
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/asadullah48/agentscan
+    rev: <commit-sha>  # pin a commit; this repository has no release tags yet
+    hooks:
+      - id: agentscan-validate
+        # args: [".", "--fail-on", "warning"]
+```
+
+### GitHub Actions
+
+```yaml
+# .github/workflows/agentscan.yml
+name: agentscan
+on: [push, pull_request]
+permissions:
+  contents: read
+  security-events: write  # only needed for the SARIF upload
+jobs:
+  agentscan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install "git+https://github.com/asadullah48/agentscan@<commit-sha>"
+      - run: agentscan validate . --format sarif > agentscan.sarif
+        continue-on-error: true  # upload findings even when validation fails
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: agentscan.sarif
+      - run: agentscan validate . --fail-on error
+```
+
+The SARIF upload shows findings in the Security tab; drop the upload step and `security-events` if you only want a pass/fail gate. Code scanning on private repositories requires GitHub Advanced Security.
 
 ## Engineering evidence
 
@@ -108,7 +163,7 @@ Verification covers CLI behavior, discovery, validators, and fixers. It does not
 | Discovery skips common build and dependency directories | [`detectors.py`](agentscan/detectors.py) |
 | Errors and warnings stay separate | [`validators.py`](agentscan/validators.py) |
 | Repairs are limited to frontmatter operations | [`fixers.py`](agentscan/fixers.py) |
-| Human tables and JSON share the same discovery path | [`cli.py`](agentscan/cli.py) |
+| Table, JSON, and SARIF share the same discovery path | [`cli.py`](agentscan/cli.py), [`sarif.py`](agentscan/sarif.py) |
 | Behavior is checked with pytest | [`tests/`](tests/) |
 
 ## Limits
@@ -123,10 +178,11 @@ Verification covers CLI behavior, discovery, validators, and fixers. It does not
 
 ```bash
 python -m pip install '.[dev]'
+ruff check .
 python -m pytest tests -q
 ```
 
-Runtime dependencies: Click and PyYAML. Tests use pytest.
+Runtime dependencies: Click and PyYAML. Development extras: pytest, ruff, and jsonschema (for the JSON and SARIF schema tests).
 
 ## Built by Asadullah Shafique
 

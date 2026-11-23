@@ -41,7 +41,7 @@ def fix_asset(asset: Asset, asset_type: AssetType, apply: bool = True) -> List[s
     new_content = content
     meta, problem = parse_frontmatter(content)
 
-    if problem and problem.message.startswith("missing YAML frontmatter"):
+    if problem and problem.rule == "frontmatter-missing":
         name = derive_name(asset)
         skeleton = f"---\nname: {name}\n"
         if "description" in asset_type.required_fields:
